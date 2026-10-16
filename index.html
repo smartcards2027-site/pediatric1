@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>بطاقات الاستذكار الطبية - Flashcards</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-color: #f8fafc;
+            --accent-color: #38bdf8;
+            --accent-hover: #0ea5e9;
+            --secondary-color: #64748b;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            margin-bottom: 5px;
+            font-size: 1.8rem;
+            color: var(--accent-color);
+        }
+
+        .subtitle {
+            color: var(--secondary-color);
+            margin-bottom: 25px;
+            font-size: 0.95rem;
+        }
+
+        .progress-container {
+            width: 100%;
+            max-width: 500px;
+            background-color: var(--card-bg);
+            border-radius: 10px;
+            height: 10px;
+            margin-bottom: 20px;
+            overflow: hidden;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background-color: var(--accent-color);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        /* حاوية الفلاشكارد مع تأثير الدوران 3D */
+        .flashcard-container {
+            width: 100%;
+            max-width: 500px;
+            height: 280px;
+            perspective: 1000px;
+            cursor: pointer;
+            margin-bottom: 25px;
+        }
+
+        .flashcard {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0.2, 0.2, 1);
+            border-radius: 16px;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .flashcard.flipped {
+            transform: rotateY(180deg);
+        }
+
+        .card-face {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 30px;
+            box-sizing: border-box;
+            border-radius: 16px;
+            background-color: var(--card-bg);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            text-align: center;
+        }
+
+        .card-front {
+            border-top: 4px solid var(--accent-color);
+        }
+
+        .card-back {
+            background-color: #111827;
+            border-top: 4px solid #10b981;
+            transform: rotateY(180deg);
+        }
+
+        .card-label {
+            font-size: 0.8rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--secondary-color);
+            margin-bottom: 15px;
+        }
+
+        .card-content {
+            font-size: 1.25rem;
+            line-height: 1.6;
+        }
+
+        /* الأزرار */
+        .controls {
+            display: flex;
+            gap: 15px;
+            width: 100%;
+            max-width: 500px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s, transform 0.1s;
+        }
+
+        button:active {
+            transform: scale(0.97);
+        }
+
+        .btn-primary {
+            background-color: var(--accent-color);
+            color: var(--bg-color);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--accent-hover);
+        }
+        .btn-secondary {
+            background-color: var(--card-bg);
+            color: var(--text-color);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .btn-secondary:hover {
+            background-color: #334155;
+        }
+
+        .counter {
+            margin-top: 15px;
+            font-size: 0.9rem;
+            color: var(--secondary-color);
+        }
+    </style>
+</head>
+<body>
+
+    <h1>بطاقات الاستذكار الطبية</h1>
+    <div class="subtitle">اضغط على البطاقة لقلبها ورؤية الإجابة</div>
+
+    <!-- شريط التقدم -->
+    <div class="progress-container">
+        <div class="progress-bar" id="progressBar"></div>
+    </div>
+
+    <!-- بطاقة الفلاشكارد -->
+    <div class="flashcard-container" onclick="flipCard()">
+        <div class="flashcard" id="flashcard">
+            <div class="card-face card-front">
+                <div class="card-label">السؤال</div>
+                <div class="card-content" id="questionText">جاري تحميل الأسئلة...</div>
+            </div>
+            <div class="card-face card-back">
+                <div class="card-label">الإجابة</div>
+                <div class="card-content" id="answerText">جاري تحميل الإجابة...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- أزرار التنقل -->
+    <div class="controls">
+        <button class="btn-secondary" onclick="prevCard()">السابق</button>
+        <button class="btn-primary" onclick="nextCard()">التالي</button>
+    </div>
+
+    <div class="counter" id="counterText">0 / 0</div>
+
+    <script>
+        // مصفوفة الأسئلة الطبية (فيك تضيفي وتعدلي عليها بكل سهولة)
+        const flashcards = [
+            {
+                question: "شو هو الترياق الأساسي (Antidote) لتسمم الباراسيتامول (Paracetamol Toxicity)؟",
+                answer: "N-Acetylcysteine (NAC)\n(بيحمّي الكبد من النخر النمطي عن طريق تجديد مخازن الـ Glutathione)"
+            },
+            {
+                question: "شو هي العلامات الثلاثة الكلاسيكية لتسمم الأفيونيات (Opioid Toxicity Triad)؟",
+                answer: "1. تقبض الحدقة (Miosis / Pinpoint pupils)\n2. تثبيط تنفسي (Respiratory depression)\n3. انخفاض وعي / غيبوبة (Coma / Altered mental status)"
+            },
+            {
+                question: "شو هو الخط الأول بعلاج فرط الضغط الشرياني المصفق مع قصور قلب (Heart Failure with Reduced Ejection Fraction)؟",
+                answer: "مجموعات الأدوية الأساسية (الـ 4 الرائعة):\n1. ARNI أو ACEi\n2. Beta-blockers\n3. MRA (Spironolactone)\n4. SGLT2 inhibitors"
+            },
+            {
+                question: "شو الفرق الرئيسي بين التهاب الزائدة الدودية المبكر والمتقدم من حيث مكان الألم؟",
+                answer: "• المبكر: ألم حول السرة (Periumbilical pain)\n• المتقدم: يتقرح وينتقل الألم للربع السفلي الأيمن (McBurney's point / RIF)"
+            }
+        ];
+
+        let currentIndex = 0;
+        let isFlipped = false;
+
+        const flashcardEl = document.getElementById('flashcard');
+        const questionTextEl = document.getElementById('questionText');
+        const answerTextEl = document.getElementById('answerText');
+        const counterTextEl = document.getElementById('counterText');
+        const progressBarEl = document.getElementById('progressBar');
+
+        // دالة لعرض البطاقة الحالية
+        function loadCard() {
+            // إزالة حالة القلب إذا كانت مقلوبة
+            if (isFlipped) {
+                flashcardEl.classList.remove('flipped');
+                isFlipped = false;
+            }
+
+            // تأخير بسيط ليخلص تأثير القلب قبل تغيير النص
+            setTimeout(() => {
+                const current = flashcards[currentIndex];
+                questionTextEl.innerText = current.question;
+                // استبدال أسطر الجديدة بـ <br> لعرض منسق
+                answerTextEl.innerHTML = current.answer.replace(/\n/g, '<br>');
+                // تحديث العداد
+                counterTextEl.innerText =`السؤال ${currentIndex + 1} من ${flashcards.length}`;
+                
+                // تحديث شريط التقدم
+                const progress = ((currentIndex + 1) / flashcards.length) * 100;
+                progressBarEl.style.width = `${progress}%`;
+            }, 150);
+        }
+
+        // دالة قلب البطاقة
+        function flipCard() {
+            isFlipped = !isFlipped;
+            flashcardEl.classList.toggle('flipped');
+        }
+
+        // الانتقال للبطاقة التالية
+        function nextCard() {
+            if (currentIndex < flashcards.length - 1) {
+                currentIndex++;
+                loadCard();
+            } else {
+                currentIndex = 0; // العودة للأولى عند النهاية
+                loadCard();
+            }
+        }
+
+        // العودة للبطاقة السابقة
+        function prevCard() {
+            if (currentIndex > 0) {
+                currentIndex--;
+                loadCard();
+            }
+        }
+
+        // تشغيل أول بطاقة عند فتح الصفحة
+        loadCard();
+    </script>
+
+</body>
+</html>
